@@ -35,7 +35,7 @@ I would like to make the stable API live up to its promise. For example:
     * The GIL
     * Garbage collection
     * Layout of PyObject and other structs
-  * Victor has [extensive notes](https://pythoncapi.readthedocs.io/) on an ideal C API
+  * Victor has [extensive notes](https://pythoncapi.readthedocs.io/bad_api.html) on good C API
 
 ## Status
 
