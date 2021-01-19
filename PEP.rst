@@ -140,6 +140,8 @@ versions, like struct memory layouts, for performance reasons.
 The limited API is not limited to CPython; other implementations are
 encouraged to implement it and help drive its design.
 
+XXX? : Note that :pep:`387` applies to *all* Python API, not just the limited subset
+
 
 Specification
 =============
@@ -164,12 +166,24 @@ Notes saying “Part of the stable ABI” will be added to Python's documentatio
 automatically, in a way similar to the notes on functions that return borrowed 
 references.
 
-Source for the Windows shared library `python3.dll` will be generated from the
-stable ABI definition.
-
 The format of the manifest will be subject to change whenever needed.
 It should be consumed only by scripts in the CPython repository.
 If a more public list is needed, a script can be added to generate it.
+
+The following wil be generated from the ABI manifest:
+
+* Source for the Windows shared library `PC/python3dll.c`.
+* Input for documentation, `Doc/data/stable_abi.dat`.
+
+Runtime availablility of the ABI symbols will be checked using ``ctypes``,
+see :ref:`Testing the Stable ABI` below.
+
+CI tasks will be added to check the following against the stable ABI manifest:
+
+* The reference count summary, `Doc/data/refcounts.dat`.
+* The functions/structs declared and constants/macros defined
+  after ``Python.h`` is included with ``Py_LIMITED_API`` set.
+* Test suite checking the runtime availablility of symbols.
 
 
 Contents of the Stable ABI
@@ -195,17 +209,15 @@ the checklist below.
 Testing the Stable ABI
 ----------------------
 
-An automatically generated test module will be added to ensure that all members
-of the stable ABI are available at compile time
+An automatically generated test module will be added to ensure that all symbols
+included in the stable ABI are available at compile time.
 
 For each function in the stable ABI, a test will be added that calls the
-function using `ctypes`. (Where calling is not practical, such as with
-functions related to intepreter initialization and shutdown, the test will
-only look the function up.)
+function using ``ctypes``. (Where calling is not practical, such as with
+functions related to fatal errors and intepreter initialization/shutdown,
+the test will only look the function up.)
 This should prevent regressions when a function is converted to a macro,
 which keeps the same API but breaks the ABI.
-An check will be added to ensure all functions in the stable ABI are tested
-this way.
 
 
 Changing the Limited API
@@ -217,8 +229,8 @@ The checklist will 1) mention best practices and common pitfalls in Python
 C API design and 2) guide the developer around the files that need changing and
 scripts that need running when the limited API is changed.
 
-Below is the initial proposal for the checklist. After the PEP is accepted,
-see the Devguide for the current version.
+Below is the initial proposal for the checklist.
+(After the PEP is accepted, see the Devguide for the current version.)
 
 Note that the checklist applies to new additions; not the existing limited API.
 
@@ -312,7 +324,9 @@ Examples of issues that ``Py_LIMITED_API`` does not guard against are:
 Backwards Compatibility
 =======================
 
-The PEP aims at full compatibility with the existing stable ABI and limited
+Backwards compatibility is one honking great idea.
+
+This PEP aims at full compatibility with the existing stable ABI and limited
 API, but defines them terms more explicitly.
 It might not be consistent with some interpretations of what the existing
 stable ABI/limited API is.
@@ -327,8 +341,9 @@ None known.
 How to Teach This
 =================
 
-Technical documentation will be provided.
-It will be aimed at experienced users familiar with C.
+Technical documentation will be provided in ``Doc/c-api/stable``
+and linked from the *What's New* document.
+Docs for CPython core developers will be added to the devguide.
 
 
 Reference Implementation
