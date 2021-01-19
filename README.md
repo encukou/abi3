@@ -43,7 +43,7 @@ I would like to make the stable API live up to its promise. For example:
 
 ### Projects using the stable ABI (to various extent):
 
-* [PySide2](https://pypi.org/project/PySide2/) (Qt for Python)
+* [PySide](https://pypi.org/project/PySide6/) (Qt for Python)
 * [cryptography](https://pypi.org/project/cryptography)
 * [PyO3](https://pyo3.rs/v0.10.1/) (Rust/Python interop)
 
