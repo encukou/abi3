@@ -98,11 +98,11 @@ Python API, e.g. extension modules or software that embeds Python.
 Stable ABI
 ----------
 
-The CPython *Stable ABI* is a promise that extensions built with a specific
-Cpython version will be usable with any newer interpreter of the same major
-version, on the same platform and with the same compiler & settings.
-For example, a extension built with CPython 3.10 Stable ABI will be usable with
-CPython 3.11, 3.12, and so on, but not necessarily with 4.0.
+The CPython *Stable ABI* is a promise that extensions built against
+a specific Stable ABI version will be usable with any newer interpreter of the
+same major version, on the same platform and with the same compiler & settings.
+For example, a extension built with the CPython 3.10 Stable ABI will be usable
+with CPython 3.11, 3.12, and so on, but not necessarily with 4.0.
 
 The Stable ABI is not generally forward-compatible: an extension built and
 tested with CPython 3.10 will not generally be compatible with CPython 3.9.
@@ -113,11 +113,11 @@ tested with CPython 3.10 will not generally be compatible with CPython 3.9.
    interpreter.
 
 The Stable ABI trades performance for its stability.
-For example, many functions in the stable ABI are available as faster macros
-to extensions that are built for a specific CPython version.
+For example, extensions built for a specific CPython version will automatically
+use faster macros instead of functions in the stable ABI.
 
-Future Python sversions may deprecate some members of the Stable ABI.
-Such members will still work, but may suffer from issues like reduced
+Future Python versions may deprecate some members of the Stable ABI.
+Deprecated members will still work, but may suffer from issues like reduced
 performance or, in the most extreme cases, memory/resource leaks.
 
 
@@ -127,8 +127,12 @@ Limited API
 Stable ABI guarantee holds for extensions compiled from code that restricts
 itself to the *Limited API*, a subset of CPython's C API.
 
-The limited API is used when preprocessor macro ``Py_LIMITED_API`` is defined
-to either ``3`` or the current ``PYTHON_API_VERSION``.
+Extensions that target the limited API should define the preprocessor macro
+``Py_LIMITED_API`` to either ``3`` or the current ``PYTHON_API_VERSION``.
+This will enable stable ABI versions of several functions and limit definitions
+to the limited API.
+(However, note that the macro is not perfect: due to technical issues or
+oversigt, some non-limited API might be exposed even with it defined.)
 
 The Limited API is not guaranteed to be *stable*.
 In the future, parts of the limited API may be deprecated.
@@ -143,13 +147,13 @@ is followed.
    This is currently a possibility for the future; this PEP does not to propose
    a concrete process for deprecations and removals.
 
-The goal is for the limited API to cover everything needed to interact
+The goal for the limited API is to cover everything needed to interact
 with the interpreter.
-There main reason to not include a public API in the limited subset
+The main reason to not include a public API in the limited subset
 should be that it needs implementation details that change between CPython
-versions (like struct memory layouts) for performance reasons.
+versions (like struct memory layouts) – usually for performance reasons.
 
-The limited API is not limited to CPython; other implementations are
+The limited API is not limited to CPython. Other implementations are
 encouraged to implement it and help drive its design.
 
 
@@ -175,13 +179,13 @@ Members that are not part of the Limited API, but are part of the Stable ABI
 (e.g. ``PyObject.ob_type``, which is accessible by the ``Py_TYPE`` macro),
 will be annotated as such.
 
-For items that are not available on all systems, the manifest will record the
-feature macro that determines their presence, such as ``MS_WINDOWS`` or
+For items that are only available on some systems, the manifest will record the
+feature macro that determines their presence (such as ``MS_WINDOWS`` or
 ``HAVE_FORK``).
 To make the implementation (and usage from non-C languages) easier,
 all such macros will be simple names; if a future item needs a “negative” macro
 or complex expression (such as a hypothetical ``#ifndef MACOSX`` or
-``#ifdef POSIX && ~LINUX``), a new feature macro will be derived from that.
+``#if defined(POSIX) && !defined(LINUX)``), a new feature macro will be derived.
 
 The format of the manifest will be subject to change whenever needed.
 It should be consumed only by scripts in the CPython repository.
@@ -203,7 +207,11 @@ continuous integration:
   function in the stable ABI (among others).
 * The functions/structs declared and constants/macros defined
   when ``Python.h`` is included with ``Py_LIMITED_API`` set.
-  (Initially Linux only; other systems may be added in the future.)
+  (Initially Linux only; checks on other systems may be added in the future.)
+
+After the initial implementation, details such as function arguments will be
+added and the manifest will be checked for internal consistency (e.g. all
+types used in function signatures are part of the API).
 
 
 Contents of the Stable ABI
@@ -212,7 +220,7 @@ Contents of the Stable ABI
 The initial stable ABI manifest will include:
 
 * The Stable ABI specified in :pep:`384`.
-* All functions listed in ``PC/python3dll.c``.
+* Everything listed in ``PC/python3dll.c``.
 * All structs (struct typedefs) which these functions return or take as
   arguments. (Fields of such structs will not necessarily be added.)
 * New type slots, such as ``Py_am_aiter``.
@@ -248,6 +256,7 @@ in the stable ABI using ``ctypes``, with exceptions for e.g. functions related
 to fatal errors and intepreter initialization/shutdown.
 This should prevent regressions when a function is converted to a macro,
 which keeps the same API but breaks the ABI.
+It should also help ensure that the ABI of function signatures doesn't change.
 (Creating this test is expected to take longer than the rest of this PEP to
 implement, possibly it'll need several releases.)
 
