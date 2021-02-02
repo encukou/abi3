@@ -21,14 +21,15 @@ Motivation
 :pep:`384` defined a limited API and stable ABI, which allows extenders and
 embedders of CPython to compile extension modules that are binary-compatible
 with any subsequent version of 3.x.
-In theory, this brings many advantages:
+In theory, this brings several advantages.
 
-* A module can be built only once per platform and support multiple versions
-  of Python, reducing time, power and maintainer attention needed for builds
-  (in exchange for potentially worse performance).
-* Binary wheels using the stable ABI work with new versions of CPython
-  throughout the pre-release period, and can be tested in environments where
-  building from source is not practical.
+A module can be built only once per platform and support multiple versions
+of Python, reducing time, power and maintainer attention needed for builds
+(in exchange for potentially worse performance).
+
+Binary wheels using the stable ABI work with new versions of CPython
+throughout the pre-release period, and can be tested in environments where
+building from source is not practical.
 
 Also, if generators like Cython support the stable ABI, some projects
 could offer stable-ABI wheels *in addition* to specific-ABI ones, in order
@@ -44,8 +45,8 @@ However, in hindsignt, PEP 384 and its implementation has several issues:
 
 * It is ill-defined. According to PEP 384, functions are *opt-out*:
   all functions not specially marked are part of the stable ABI.
-  In practice, for Windows there's [a list] that's *opt-in*.
-  For users there is a `#define` that should make only the stable ABI
+  In practice, for Windows there's a list that's *opt-in*.
+  For users there is a ``#define`` that should make only the stable ABI
   available, but There is no process that ensures it is kept up-to date.
   Neither is there a process for updating the documentation.
 * Until recently, the stable ABI was not tested at all. It tends to break.
@@ -107,8 +108,8 @@ The Stable ABI is not generally forward-compatible: an extension built and
 tested with CPython 3.10 will not generally be compatible with CPython 3.9.
 
 .. note::
-   For example, starting in Python 3.10, the `Py_tp_doc` slot may be set to
-   `NULL`, while in older versions, a `NULL` value will likely crash the 
+   For example, starting in Python 3.10, the ``Py_tp_doc`` slot may be set to
+   ``NULL``, while in older versions, a ``NULL`` value will likely crash the
    interpreter.
 
 The Stable ABI trades performance for its stability.
@@ -126,8 +127,8 @@ Limited API
 Stable ABI guarantee holds for extensions compiled from code that restricts
 itself to the *Limited API*, a subset of CPython's C API.
 
-The limited API is used when preprocessor macro `Py_LIMITED_API` is defined
-to either `3` or the current `PYTHON_API_VERSION`.
+The limited API is used when preprocessor macro ``Py_LIMITED_API`` is defined
+to either ``3`` or the current ``PYTHON_API_VERSION``.
 
 The Limited API is not guaranteed to be *stable*.
 In the future, parts of the limited API may be deprecated.
@@ -164,7 +165,7 @@ Stable ABI Manifest
 
 All members of the stable ABI – functions, typedefs, structs, data, macros,
 and constants – will be explicitly listed in a single "manifest" file,
-`Misc/stable_abi.dat`.
+``Misc/stable_abi.dat``.
 
 For structs, any fields that users of the stable ABI are allowed to access
 will be listed explicitly.
@@ -175,12 +176,12 @@ Members that are not part of the Limited API, but are part of the Stable ABI
 will be annotated as such.
 
 For items that are not available on all systems, the manifest will record the
-feature macro that determines their presence, such as `MS_WINDOWS` or
-`HAVE_FORK`).
+feature macro that determines their presence, such as ``MS_WINDOWS`` or
+``HAVE_FORK``).
 To make the implementation (and usage from non-C languages) easier,
 all such macros will be simple names; if a future item needs a “negative” macro
-or complex expression (such as a hypothetical `#ifndef MACOSX` or
-`#ifdef POSIX && ~LINUX`), a new feature macro will be derived from that.
+or complex expression (such as a hypothetical ``#ifndef MACOSX`` or
+``#ifdef POSIX && ~LINUX``), a new feature macro will be derived from that.
 
 The format of the manifest will be subject to change whenever needed.
 It should be consumed only by scripts in the CPython repository.
@@ -188,8 +189,8 @@ If a stable list is needed, a script can be added to generate it.
 
 The following wil be generated from the ABI manifest:
 
-* Source for the Windows shared library `PC/python3dll.c`.
-* Input for documentation, `Doc/data/stable_abi.dat`.
+* Source for the Windows shared library ``PC/python3dll.c``.
+* Input for documentation, ``Doc/data/stable_abi.dat``.
 * Test case that checks the runtime availablility of symbols (see below).
 
 Runtime availablility of the ABI symbols will be checked using ``ctypes``,
@@ -198,7 +199,7 @@ see :ref:`Testing the Stable ABI` below.
 The following will be checked against the stable ABI manifest as part of
 continuous integration:
 
-* The reference count summary, `Doc/data/refcounts.dat`, includes all
+* The reference count summary, ``Doc/data/refcounts.dat``, includes all
   function in the stable ABI (among others).
 * The functions/structs declared and constants/macros defined
   when ``Python.h`` is included with ``Py_LIMITED_API`` set.
@@ -322,12 +323,12 @@ Procedure:
 * Move the declaration to a header file directly under ``Include/``, into a
   ``#if !defined(Py_LIMITED_API) || Py_LIMITED_API+0 >= 0x03yy0000`` block
   (with the ``yy`` corresponding to the target CPython version).
-* Make an entry in the stable ABI manifest, `Misc/stable_abi.dat`.
+* Make an entry in the stable ABI manifest, ``Misc/stable_abi.dat``.
 * For functions, add a test that calls the function using ctypes
   (XXX: mention filename).
-* Regenerate the autogenerated files using `make regen-all`.
+* Regenerate the autogenerated files using ``make regen-all``.
   (XXX: check non-Linux platforms)
-* Build Python and run checks using `make check-abi`.
+* Build Python and run checks using ``make check-abi``.
   (XXX: check non-Linux platforms)
 
 
