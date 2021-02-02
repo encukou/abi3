@@ -11,9 +11,8 @@ Created: 08-Dec-2020
 Abstract
 ========
 
-[A short (~200 word) description of the technical issue being addressed.]
-
-XXX: Abstract should be written last
+Python's Stable ABI and Limited API, introduced in :pep:`384`,
+will be formalized in a single definitive file, tested, and documented.
 
 
 Motivation
@@ -25,28 +24,40 @@ with any subsequent version of 3.x.
 In theory, this brings many advantages:
 
 * A module can be built only once per platform and support multiple versions
-  of Python, reducing time, power and maintainer attention needed for builds.
+  of Python, reducing time, power and maintainer attention needed for builds
+  (in exchange for potentially worse performance).
 * Binary wheels using the stable ABI work with new versions of CPython
   throughout the pre-release period, and can be tested in environments where
   building from source is not practical.
 
-As a welcome side effect of the stable ABI's hiding of implementation details
-is that it is becoming a viable target for alternate Python implementations
-that need to implement (parts of) the C API.
+Also, if generators like Cython support the stable ABI, some projects
+could offer stable-ABI wheels *in addition* to specific-ABI ones, in order
+to support future (alpha/beta/early release) interpreters, while still
+using version-specific optimizations on CPython versions they target
+specifically.
+
+As a welcome side effect of the limited API's hiding of implementation details
+is that this API is becoming a viable target for alternate Python
+implementations that would be incompatible with the full C API.
 
 However, in hindsignt, PEP 384 and its implementation has several issues:
 
-* There is no process keep the ABI up to date.
-* Contents of the limited API are not listed explicitly, making it unclear
-  if a particular member (e.g. function, structure) is a part of it.
+* It is ill-defined. According to PEP 384, functions are *opt-out*:
+  all functions not specially marked are part of the stable ABI.
+  In practice, for Windows there's [a list] that's *opt-in*.
+  For users there is a `#define` that should make only the stable ABI
+  available, but There is no process that ensures it is kept up-to date.
+  Neither is there a process for updating the documentation.
+* Until recently, the stable ABI was not tested at all. It tends to break.
+  For example, changing a function to a macro can break the stable ABI as the
+  function symbol is removed.
 * There is no way to deprecate parts of the limited API.
+* It is incomplete. Some operations are not available in the stable ABI,
+  with little reason except "we forgot".
+  (This last point is one the PEP will not help with, however.)
 
 This PEP defines the limited API more clearly and introducess process
-designed to make the API more useful.
-
-Additionally, PEP 384 defines a *limited API* as a way to build against the
-stable ABI.
-This PEP defines the limited API more robustly.
+designed to make the stable ABI and limited API more useful and robust.
 
 
 Rationale
@@ -58,13 +69,13 @@ a human-maintained “manifest” file.
 
 There have been efforts to collect such lists automatically, e.g. by scanning
 the symbols exported from Python.
-This might seem to be easier to maintain by our volunteer team.
-
-However, designing a future-proof API is not a trivial task.
-The cost of updating an explicit manifest is small compared
+Such automation might seem easier to maintain than a handcrafted file,
+but has major issues: for example, the set exported symbols has
+platform-specific variations.
+Also, the cost of updating an explicit manifest is small compared
 to the overall work that should go into changing API that will need to
-be suppported forever (or until Python 3 reaches
-end of life, if that comes sooner).
+be suppported forever (or until Python 3 reaches end of life, if that
+comes sooner).
 
 This PEP proposes automatically generating things *from* the manifest:
 initially documentation and DLL contents, with later possibilities
@@ -133,57 +144,65 @@ is followed.
 
 The goal is for the limited API to cover everything needed to interact
 with the interpreter.
-There main reasons to not include a public API in the limited subset
+There main reason to not include a public API in the limited subset
 should be that it needs implementation details that change between CPython
-versions, like struct memory layouts, for performance reasons.
+versions (like struct memory layouts) for performance reasons.
 
 The limited API is not limited to CPython; other implementations are
 encouraged to implement it and help drive its design.
-
-XXX? : Note that :pep:`387` applies to *all* Python API, not just the limited subset
 
 
 Specification
 =============
 
-To make the stable ABI more useful and stable, the following changes
+To make the stable ABI more useful and robust, the following changes
 are proposed.
 
 
 Stable ABI Manifest
 -------------------
 
-All members of the stable ABI – functions, typedefs, structs, struct fields,
-data values etc. – will be explicitly listed in a single "manifest" file,
-along with the Limited API version they were added in.
-Struct fields that users of the stable ABI are allowed to access will be
-listed explicitly.
+All members of the stable ABI – functions, typedefs, structs, data, macros,
+and constants – will be explicitly listed in a single "manifest" file,
+`Misc/stable_abi.dat`.
+
+For structs, any fields that users of the stable ABI are allowed to access
+will be listed explicitly.
+
+The manifest will also serve as the definitive list of the Limited API.
 Members that are not part of the Limited API, but are part of the Stable ABI
 (e.g. ``PyObject.ob_type``, which is accessible by the ``Py_TYPE`` macro),
 will be annotated as such.
 
-Notes saying “Part of the stable ABI” will be added to Python's documentation
-automatically, in a way similar to the notes on functions that return borrowed 
-references.
+For items that are not available on all systems, the manifest will record the
+feature macro that determines their presence, such as `MS_WINDOWS` or
+`HAVE_FORK`).
+To make the implementation (and usage from non-C languages) easier,
+all such macros will be simple names; if a future item needs a “negative” macro
+or complex expression (such as a hypothetical `#ifndef MACOSX` or
+`#ifdef POSIX && ~LINUX`), a new feature macro will be derived from that.
 
 The format of the manifest will be subject to change whenever needed.
 It should be consumed only by scripts in the CPython repository.
-If a more public list is needed, a script can be added to generate it.
+If a stable list is needed, a script can be added to generate it.
 
 The following wil be generated from the ABI manifest:
 
 * Source for the Windows shared library `PC/python3dll.c`.
 * Input for documentation, `Doc/data/stable_abi.dat`.
+* Test case that checks the runtime availablility of symbols (see below).
 
 Runtime availablility of the ABI symbols will be checked using ``ctypes``,
 see :ref:`Testing the Stable ABI` below.
 
-CI tasks will be added to check the following against the stable ABI manifest:
+The following will be checked against the stable ABI manifest as part of
+continuous integration:
 
-* The reference count summary, `Doc/data/refcounts.dat`.
+* The reference count summary, `Doc/data/refcounts.dat`, includes all
+  function in the stable ABI (among others).
 * The functions/structs declared and constants/macros defined
-  after ``Python.h`` is included with ``Py_LIMITED_API`` set.
-* Test suite checking the runtime availablility of symbols.
+  when ``Python.h`` is included with ``Py_LIMITED_API`` set.
+  (Initially Linux only; other systems may be added in the future.)
 
 
 Contents of the Stable ABI
@@ -199,11 +218,22 @@ The initial stable ABI manifest will include:
 * The type flags  ``Py_TPFLAGS_DEFAULT``, ``Py_TPFLAGS_BASETYPE``,
   ``Py_TPFLAGS_HAVE_GC``, ``Py_TPFLAGS_METHOD_DESCRIPTOR``.
 * The calling conventions ``METH_*`` (except deprecated ones).
-* All API needed by macros is the stable ABI (usually annotated as not being
-  part of the limited API).
+* All API needed by macros is the stable ABI (annotated as not being part of
+  the limited API).
+
+Items that are no longer in CPython when this PEP is accepted will be removed
+from the list.
 
 Additional items may be aded to the initial manifest according to
 the checklist below.
+
+
+Documenting the Limited API
+---------------------------
+
+Notes saying “Part of the limited API” will be added to Python's documentation
+automatically, in a way similar to the notes on functions that return borrowed
+references.
 
 
 Testing the Stable ABI
@@ -212,19 +242,20 @@ Testing the Stable ABI
 An automatically generated test module will be added to ensure that all symbols
 included in the stable ABI are available at compile time.
 
-For each function in the stable ABI, a test will be added that calls the
-function using ``ctypes``. (Where calling is not practical, such as with
-functions related to fatal errors and intepreter initialization/shutdown,
-the test will only look the function up.)
+Additionally, a test will be added that aims to *call* each function
+in the stable ABI using ``ctypes``, with exceptions for e.g. functions related
+to fatal errors and intepreter initialization/shutdown.
 This should prevent regressions when a function is converted to a macro,
 which keeps the same API but breaks the ABI.
+(Creating this test is expected to take longer than the rest of this PEP to
+implement, possibly it'll need several releases.)
 
 
 Changing the Limited API
 ------------------------
 
-A checklist for changing the limited API, including new members (structs,
-functions or values), will be added to the `Devguide`_.
+A checklist for changing the limited API, including adding new items to it
+and removing existing ones, will be added to the `Devguide`_.
 The checklist will 1) mention best practices and common pitfalls in Python
 C API design and 2) guide the developer around the files that need changing and
 scripts that need running when the limited API is changed.
@@ -232,7 +263,8 @@ scripts that need running when the limited API is changed.
 Below is the initial proposal for the checklist.
 (After the PEP is accepted, see the Devguide for the current version.)
 
-Note that the checklist applies to new additions; not the existing limited API.
+Note that the checklist applies to new changes; several items
+in the *existing* limited API are grandfathered and couldn't be added today.
 
 Design considerations:
 
@@ -243,8 +275,10 @@ Design considerations:
 * Make sure the types of all parameters and return values of the added
   function(s) and all fields of the added struct(s) are be part of the
   limited API (or standard C).
+
 * Make sure the new API and its intended use follows standard C, not just
-  features of currently suppoerted platforms.
+  features of currently supported platforms.
+  Specifically, follow the C dialect specified in :pep:`7`.
 
   * Do not cast a function pointer to ``void*`` (a data pointer) or vice versa.
 
@@ -258,14 +292,14 @@ Design considerations:
 * Make sure the ownership rules and lifetimes of all applicable struct fields,
   arguments and return values are well defined.
 * Think about ease of use for the user. (In C, ease of use itself is not very 
-  important; what *is* important is reducing boilerplate code needed to use the
+  important; what *is* useful is reducing boilerplate code needed to use the
   API. Bugs like to hide in boiler plates.)
 
   * If a function will be often called with specific value for an argument,
-    consider making it default (assumed when ``NULL`` is passed in).
+    consider making it default (used when ``NULL`` is passed in).
 
 * Think about future extensions: for example, if it's possible that future
-  Python versions will need  to add a new field to your struct,
+  Python versions will need to add a new field to your struct,
   how will that be done?
 
 * Make as few assumptions as possible about details that might change in
@@ -273,7 +307,7 @@ Design considerations:
 
     * The GIL
     * Garbage collection
-    * Layout of PyObject and other structs
+    * Memory layout of PyObject, lists/tuples and other structures
 
 If following these guidelines would hurt performance, add a fast function
 (or macro) to the non-limited API and a stable equivalent to the limited API.
@@ -285,13 +319,16 @@ consider discussing the change at the `capi-sig`_ mailing list.
 
 Procedure:
 
-* Move the declaration to a header file directly under ``Include/`` and
-  ``#if !defined(Py_LIMITED_API) || Py_LIMITED_API+0 >= 0x03yy0000``
-  (with the ``yy`` corresponding to Python version).
-* Make an entry in the stable ABI list. (XXX: mention filename)
+* Move the declaration to a header file directly under ``Include/``, into a
+  ``#if !defined(Py_LIMITED_API) || Py_LIMITED_API+0 >= 0x03yy0000`` block
+  (with the ``yy`` corresponding to the target CPython version).
+* Make an entry in the stable ABI manifest, `Misc/stable_abi.dat`.
 * For functions, add a test that calls the function using ctypes
   (XXX: mention filename).
-* Regenerate the autogenerated files. (XXX: specific instructions)
+* Regenerate the autogenerated files using `make regen-all`.
+  (XXX: check non-Linux platforms)
+* Build Python and run checks using `make check-abi`.
+  (XXX: check non-Linux platforms)
 
 
 Advice for Extenders and Embedders
@@ -304,27 +341,27 @@ and preferably build with the lowest such version.
 
 Compiling with ``Py_LIMITED_API`` defined is *not* a guarantee that your code
 conforms to the limited API or the stable ABI.
-It only covers definitions, but an API also includes other issues,
-such as expected semantics.
+``Py_LIMITED_API`` only covers definitions, but an API also includes other
+issues, such as expected semantics.
 
 Examples of issues that ``Py_LIMITED_API`` does not guard against are:
 
-* Calling a function with invalid arguments 
-* An function that started accepting ``NULL`` values for an argument
+* Calling a function with invalid arguments
+* A function that started accepting ``NULL`` values for an argument.
   in Python 3.9 will fail if ``NULL`` is passed to it under Python 3.8.
   Only testing with 3.8 (or lower versions) will uncover this issue.
 * Some structs include a few fields that are part of the stable ABI and other
   fields that aren't.
   ``Py_LIMITED_API`` does not filter out such “private” fields.
-* Using something that is not documented as part of the stable ABI,
-  but exposed even with ``Py_LIMITED_API`` defined.
+* Code that uses something that is not documented as part of the stable ABI,
+  but exposed even with ``Py_LIMITED_API`` defined, may break in the future.
   Despite the team's best efforts, such issues may happen.
 
 
 Backwards Compatibility
 =======================
 
-Backwards compatibility is one honking great idea.
+Backwards compatibility is one honking great idea!
 
 This PEP aims at full compatibility with the existing stable ABI and limited
 API, but defines them terms more explicitly.
@@ -349,11 +386,14 @@ Docs for CPython core developers will be added to the devguide.
 Reference Implementation
 ========================
 
-None so far.
+Nothing presentable yet.
 
 
 Rejected Ideas
 ==============
+
+Defining a process for deprecations/removals
+--------------------------------------------
 
 While this PEP acknowledges that parts of the limited API might be deprecated
 or removed in the future, a process to do this is not in scope, and is left
@@ -369,6 +409,8 @@ None so far.
 References
 ==========
 
+.. _Devguide: https://devguide.python.org/
+
 
 Copyright
 =========
@@ -377,7 +419,6 @@ This document is placed in the public domain or under the
 CC0-1.0-Universal license, whichever is more permissive.
 
 
-.. _Devguide: https://devguide.python.org/
 
 ..
     Local Variables:
