@@ -72,7 +72,7 @@ All stdlib extension modules will be *isolated*. That is:
 Conversion to heap types
 ------------------------
 
-Types whose methods need access to “their” module instance will be converted
+Types whose methods need access to their module instance will be converted
 to heap types following :pep:`630`, with the following considerations:
 
 - All heap types **must fully implement the GC protocol**. See
@@ -84,7 +84,7 @@ to heap types following :pep:`630`, with the following considerations:
   flag to retain immutability.
   See `bpo-43908 <https://bugs.python.org/issue43908>`__.
 
-- A static type with ``tp_new = NULL`` does not have public constructor, but
+- A static type with ``tp_new = NULL`` does not have a public constructor, but
   heap types inherit the constructor from the base class. Make sure types that
   previously were impossible to instantiate retain that feature; use
   `Py_TPFLAGS_DISALLOW_INSTANTIATION`. Add tests using
@@ -104,12 +104,12 @@ to heap types following :pep:`630`, with the following considerations:
 
 These issues will be added to the Devguide to help any future conversions.
 
-If another kind of issue is found, the module in questions should be unchanged
+If another kind of issue is found, the module in question should be unchanged
 until a solution is found and added to the Devguide, and already
 converted modules are checked and fixed.
 
-Static types that do not need module state access and have no other reason to
-be converted should stay static.
+Static types that do not need module state access, and have no other reason to
+be converted, should stay static.
 
 
 Testing
@@ -121,7 +121,7 @@ XXX How should this be tested?
 Process
 -------
 
-The following process should be added to the Devguide, and stay there until
+The following process should be added to the Devguide, and remain until
 all modules are converted.
 Any new findings should be documented there or in the general HOWTO.
 
@@ -131,9 +131,9 @@ Part 1: Preparation
 1. Open a discussion, either on the bug tracker or on Discourse. Involve the
    module maintainer and/or code owner. Explain the reason and rationale for
    the changes.
-2. Identify global state performance bottlenecks, if there are such. Create a
-   proof-of-concept implementation and measure the performance impact. `pyperf`
-   is a good tool for benchmarking.
+2. Identify global state performance bottlenecks.
+   Create a proof-of-concept implementation, and measure the performance impact.
+   `pyperf` is a good tool for benchmarking.
 3. Create an implementation plan. For small modules with few types, a single PR
    may do the job. For larger modules with lots of types, and possibly also
    external library callbacks, multiple PR's will be needed.
@@ -151,15 +151,14 @@ smaller modules.
 2. Prepare for module state; establish a module state `struct`, add an instance
    as a static global variable, and create helper stubs for fetching the module
    state.
-3. Add relevant global variables to the module state `struct` and modify code
+3. Add relevant global variables to the module state `struct`, and modify code
    that accesses the global state to use the module state helpers instead. This
    step may be broken into several PR's.
 4. Where necessary, convert heap types to static types.
 5. Convert the global module state struct to true module state.
 6. Implement multi-phase initialisation.
 
-Preferably, steps 4 through 6 should all land early in a single alpha
-development phase.
+Steps 4 through 6 should preferably land in a single alpha development phase.
 
 
 Backwards Compatibility
