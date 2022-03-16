@@ -1,6 +1,6 @@
 PEP: XXX
 Title: Isolating modules in the standard library
-Author: Petr Viktorin <encukou@gmail.com>, Erlend Egeberg Aasland <erlend.aasland@protonmail.com>
+Author: Erlend Egeberg Aasland <erlend.aasland@protonmail.com>, Petr Viktorin <encukou@gmail.com>
 Discussions-To: XXX
 Status: Draft
 Type: Standards
@@ -25,11 +25,8 @@ Much of this proposal has already been implemented, partly to solve related
 issues and partly because of misunderstandings and lack of coordination.
 
 We submit this PEP to explain the changes, seek consensus on
-whether they are good,  propose changing modules that do not exhibit
-issues, and set best practices for new modules.
-
-We are aware that the pre-existing changes might need to be reverted if issues
-are found.
+whether they are good,  propose the remaining changes,
+and set best practices for new modules.
 
 The PEP takes the form of the proposal that should have been submitted,
 talking about the situation before the proposed changes as current.
@@ -51,7 +48,7 @@ Specification
 =============
 
 The body of :pep:`630` will be converted to a HOWTO in the Python
-documentation, and PEP will be retired (marked Final).
+documentation, and that PEP will be retired (marked Final).
 
 All extension modules in the standard library will be converted to multi-phase
 initialization introduced in :pep:`484`.
@@ -63,6 +60,7 @@ All stdlib extension modules will be *isolated*. That is:
 
 - State specific to the module will not be shared with other module instances,
   unless it represents global state.
+
   For example, ``_csv.field_size_limit`` will get/set a module-specific
   number. On the other hand, functions like ``readline.get_history_item`` or
   ``os.getpid`` will continue to work with state that is process-global
@@ -83,6 +81,9 @@ to heap types following :pep:`630`, with the following considerations:
   immutable. Heap types must be defined with the `Py_TPFLAGS_IMMUTABLE_TYPE`
   flag to retain immutability.
   See `bpo-43908 <https://bugs.python.org/issue43908>`__.
+
+  Tests should ensure ``TypeError`` is raised when trying to create a new
+  attribute of an immutable type.
 
 - A static type with ``tp_new = NULL`` does not have a public constructor, but
   heap types inherit the constructor from the base class. Make sure types that
@@ -110,12 +111,6 @@ converted modules are checked and fixed.
 
 Static types that do not need module state access, and have no other reason to
 be converted, should stay static.
-
-
-Testing
--------
-
-XXX How should this be tested?
 
 
 Process
@@ -191,18 +186,25 @@ Beginners should not be affected.
 Reference Implementation
 ========================
 
-Main branch, particularly commits for these issues:
+Most of the changes are now in the main branch, as commits for these issues:
 
-- https://bugs.python.org/issue40077
-- https://bugs.python.org/issue46417
-- https://bugs.python.org/issue1635741
+- `bpo-40077, Convert static types to heap types: use PyType_FromSpec() <https://bugs.python.org/issue40077>`_
+- `bpo-40077, Clear static types in Py_Finalize() for embedded Python <https://bugs.python.org/issue46417>`_
+- `bpo-1635741, Py_Finalize() doesn't clear all Python objects at exit <https://bugs.python.org/issue1635741>`_
+
+As an example, changes and fix-ups done in the `_csv` module are:
+
+- `GH-23224, Remove static state from the _csv module <https://github.com/python/cpython/pull/23224>`_
+- `GH-26008, Allow subclassing of ``csv.Error`` <https://github.com/python/cpython/pull/26008>`_
+- `GH-26074, Add GC support to _csv heap types <https://github.com/python/cpython/pull/26074>`_
+- `GH-26351, Make heap types converted during 3.10 alpha immutable <https://github.com/python/cpython/pull/26351>`_
 
 
 Rejected Ideas
 ==============
 
-Keep things as they were and not break anything
------------------------------------------------
+Do not isolate modules in the standard library
+----------------------------------------------
 
 XXX Someone write something here please
 
