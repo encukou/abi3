@@ -207,12 +207,6 @@ Do not isolate modules in the standard library
 XXX Someone write something here please
 
 
-Open Issues
-===========
-
-See XXX above.
-
-
 Copyright
 =========
 
