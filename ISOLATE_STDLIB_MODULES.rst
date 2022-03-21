@@ -212,14 +212,6 @@ Open Issues
 
 See XXX above.
 
-Types that do not need module state access
-------------------------------------------
-
-If Python gets a per-interpreter GIL, these types will need to either
-
-- be converted to heap types, or
-- become immortal (see :pep:`683`).
-
 
 Copyright
 =========
