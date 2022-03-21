@@ -71,10 +71,6 @@ Conversion to heap types
 Types whose methods need access to their module instance will be converted
 to heap types following :pep:`630`, with the following considerations:
 
-- All heap types **must fully implement the GC protocol**. See
-  [bpo-42972](https://bugs.python.org/issue42972).
-  (XXX move this to PEP 630)
-
 - All standard library types that used to be static types should remain
   immutable. Heap types must be defined with the `Py_TPFLAGS_IMMUTABLE_TYPE`
   flag to retain immutability.
@@ -95,11 +91,6 @@ to heap types following :pep:`630`, with the following considerations:
   before and after conversion, and if the test fails, add a ``__reduce__``
   method that raises ``TypeError``. See `PR-21002 <https://github.com/python/cpython/pull/21002/files>`__
   for an example.
-
-- Use strong "back-refs" to the module object to ensure the module state
-  pointer never outlives objects that access module state. Keep this in mind
-  for external library callbacks that access module state.
-  (XXX move this to PEP 630)
 
 These issues will be added to the Devguide to help any future conversions.
 
