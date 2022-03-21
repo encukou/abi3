@@ -28,8 +28,6 @@ We submit this PEP to explain the changes, seek consensus on
 whether they are good,  propose the remaining changes,
 and set best practices for new modules.
 
-The PEP takes the form of the proposal that should have been submitted,
-talking about the situation before the proposed changes as current.
 
 
 Motivation & Rationale
@@ -189,7 +187,7 @@ Reference Implementation
 Most of the changes are now in the main branch, as commits for these issues:
 
 - `bpo-40077, Convert static types to heap types: use PyType_FromSpec() <https://bugs.python.org/issue40077>`_
-- `bpo-40077, Clear static types in Py_Finalize() for embedded Python <https://bugs.python.org/issue46417>`_
+- `bpo-46417, Clear static types in Py_Finalize() for embedded Python <https://bugs.python.org/issue46417>`_
 - `bpo-1635741, Py_Finalize() doesn't clear all Python objects at exit <https://bugs.python.org/issue1635741>`_
 
 As an example, changes and fix-ups done in the `_csv` module are:
