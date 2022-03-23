@@ -189,21 +189,11 @@ As an example, changes and fix-ups done in the `_csv` module are:
 - `GH-26351, Make heap types converted during 3.10 alpha immutable <https://github.com/python/cpython/pull/26351>`_
 
 
-Rejected Ideas
-==============
-
-Do not isolate modules in the standard library
-----------------------------------------------
-
-XXX Someone write something here please
-
-
 Copyright
 =========
 
 This document is placed in the public domain or under the
 CC0-1.0-Universal license, whichever is more permissive.
-
 
 
 ..
