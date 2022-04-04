@@ -21,9 +21,7 @@ stored on module objects rather than in process-global variables.
 Note on Backdating
 ==================
 
-Much of this proposal has already been implemented, partly to solve related
-issues and partly because of misunderstandings and lack of coordination.
-
+Much of this proposal has already been implemented.
 We submit this PEP to explain the changes, seek consensus on
 whether they are good,  propose the remaining changes,
 and set best practices for new modules.
